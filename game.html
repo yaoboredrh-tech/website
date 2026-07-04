@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>飞起来！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: #2a2a2a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: manipulation;
+        }
+        .game-wrapper {
+            display: flex;
+            align-items: stretch;
+            gap: 1rem;
+            width: 95%;
+            max-width: 700px;
+        }
+        /* 左侧作者按钮 (竖排) */
+        .author-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #3a3a4a;
+            border-radius: 24px;
+            padding: 0.6rem 0.4rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            min-width: 44px;
+            touch-action: manipulation;
+        }
+        .author-btn {
+            writing-mode: vertical-rl;
+            background: #5a6a7a;
+            border: none;
+            color: #f0f0f0;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 1.2rem 0.4rem;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2a3a4a;
+            transition: 0.05s linear;
+            font-family: inherit;
+            letter-spacing: 2px;
+            touch-action: manipulation;
+            line-height: 1.4;
+        }
+        .author-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #2a3a4a;
+        }
+        /* 作者弹窗 (模态框) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            animation: fadeIn 0.25s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #f7f7f7;
+            border-radius: 32px;
+            padding: 2.5rem 2.8rem;
+            max-width: 380px;
+            width: 90%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            text-align: center;
+            animation: scaleIn 0.25s ease;
+        }
+        .modal-box h2 {
+            font-size: 1.8rem;
+            color: #1f2a3a;
+            margin-bottom: 0.3rem;
+        }
+        .modal-box .sub {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1.2rem;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 1rem;
+        }
+        .modal-box .email {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2563eb;
+            background: #e8edf5;
+            padding: 0.6rem 1.2rem;
+            border-radius: 60px;
+            display: inline-block;
+            margin: 0.5rem 0 1.2rem;
+            word-break: break-all;
+        }
+        .modal-box .close-btn {
+            background: #3c3c3c;
+            border: none;
+            color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 0.4rem 2.4rem;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #1a1a1a;
+            transition: 0.05s linear;
+            font-family: inherit;
+            touch-action: manipulation;
+        }
+        .modal-box .close-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #1a1a1a;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .game-container {
+            background: #f7f7f7;
+            padding: 1.5rem 1.5rem 1.2rem;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            touch-action: manipulation;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 600 / 250;
+            background: #f7f7f7;
+            border-radius: 16px;
+            box-shadow: inset 0 0 0 2px #d0d0d0;
+            image-rendering: pixelated;
+            cursor: pointer;
+            touch-action: none;
+        }
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 0.8rem;
+            color: #444;
+            font-weight: bold;
+            font-size: 0.9rem;
+            background: #ececec;
+            padding: 0.4rem 1rem;
+            border-radius: 60px;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .score-board {
+            background: #d0d0d0;
+            padding: 0.1rem 1rem;
+            border-radius: 40px;
+            color: #1f1f1f;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+        .restart-btn {
+            background: #3c3c3c;
+            border: none;
+            color: #f0f0f0;
+            font-weight: bold;
+            font-size: 0.85rem;
+            padding: 0.2rem 1.4rem;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #1a1a1a;
+            transition: 0.05s linear;
+            font-family: inherit;
+            touch-action: manipulation;
+        }
+        .restart-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #1a1a1a;
+        }
+        .controls-hint {
+            color: #777;
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+            letter-spacing: 0.3px;
+            text-align: center;
+        }
+        .controls-hint kbd {
+            background: #d4d4d4;
+            padding: 0 0.6rem;
+            border-radius: 12px;
+            font-weight: bold;
+            color: #222;
+        }
+        .touch-controls {
+            display: none;
+            width: 100%;
+            justify-content: space-between;
+            margin-top: 0.6rem;
+            gap: 0.6rem;
+        }
+        .touch-btn {
+            flex: 1;
+            background: #d0d0d0;
+            border: none;
+            border-radius: 60px;
+            padding: 0.7rem 0;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #222;
+            box-shadow: 0 4px 0 #a0a0a0;
+            transition: 0.05s linear;
+            touch-action: manipulation;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: center;
+        }
+        .touch-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #a0a0a0;
+        }
+        .touch-btn.jump-btn {
+            background: #5a8a5a;
+            color: white;
+            box-shadow: 0 4px 0 #2a5a2a;
+        }
+        .touch-btn.jump-btn:active {
+            box-shadow: 0 0px 0 #2a5a2a;
+        }
+        .touch-btn.duck-btn {
+            background: #8a7a5a;
+            color: white;
+            box-shadow: 0 4px 0 #5a4a2a;
+        }
+        .touch-btn.duck-btn:active {
+            box-shadow: 0 0px 0 #5a4a2a;
+        }
+        .music-control {
+            background: #b0b8c0;
+            border: none;
+            border-radius: 40px;
+            padding: 0.1rem 1rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #222;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #7a828a;
+            transition: 0.05s linear;
+            font-family: inherit;
+            touch-action: manipulation;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .music-control:active {
+            transform: translateY(2px);
+            box-shadow: 0 0px 0 #7a828a;
+        }
+
+        @media (max-width: 600px) {
+            .game-wrapper { gap: 0.5rem; }
+            .author-side { min-width: 32px; padding: 0.3rem 0.2rem; }
+            .author-btn { font-size: 0.7rem; padding: 0.8rem 0.3rem; letter-spacing: 1px; }
+            .game-container { padding: 0.8rem 0.6rem; }
+            .info-panel { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+            .controls-hint { font-size: 0.55rem; }
+            .touch-controls { display: flex; }
+            .modal-box { padding: 1.8rem 1.5rem; }
+            .modal-box h2 { font-size: 1.4rem; }
+            .modal-box .email { font-size: 1rem; }
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: flex; }
+        }
+        @media (hover: hover) and (pointer: fine) {
+            .touch-controls { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <!-- 左侧作者按钮 -->
+    <div class="author-side">
+        <button class="author-btn" id="authorBtn">作 者</button>
+    </div>
+
+    <!-- 主游戏容器 -->
+    <div class="game-container">
+        <canvas id="gameCanvas" width="600" height="250"></canvas>
+
+        <div class="info-panel">
+            <span>🏆 最高 <span id="highScoreDisplay">0</span></span>
+            <span class="score-board">🏃 得分 <span id="scoreDisplay">0000</span></span>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button class="music-control" id="musicToggleBtn">🔊 音乐</button>
+                <button class="restart-btn" id="restartButton">↻ 重启</button>
+            </div>
+        </div>
+
+        <div class="touch-controls" id="touchControls">
+            <button class="touch-btn duck-btn" id="duckBtn">⬇ 下蹲</button>
+            <button class="touch-btn jump-btn" id="jumpBtn">⬆ 跳跃</button>
+        </div>
+
+        <div class="controls-hint">
+            <kbd>空格</kbd> / <kbd>↑</kbd> 跳跃 · <kbd>↓</kbd> 下蹲 · 点击画面跳跃
+        </div>
+    </div>
+</div>
+
+<!-- 作者弹窗 (模态框) -->
+<div class="modal-overlay" id="authorModal">
+    <div class="modal-box">
+        <h2>👨‍💻 作者</h2>
+        <div class="sub">—— 《飞起来》 ——
+                            飞起来 
+        </div>
+        <div style="margin: 0.8rem 0 0.2rem; color: #555; font-size: 0.9rem;">📧 联系邮箱</div>
+        <div class="email">Yaoboredrh@gmail.com</div>
+        <div style="font-size: 0.8rem; color: #888; margin-bottom: 1.2rem;">欢迎反馈 &amp; 建议</div>
+        <button class="close-btn" id="closeModalBtn">知道了</button>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 音频系统 ----------
+        let bgAudio = null;
+        let audioInitialized = false;
+        let audioEnabled = true;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                const audioSources = [
+                    './bgm.mp3',
+                    './bgm.ogg',
+                    './bgm.wav',
+                    './background.mp3',
+                    './music.mp3'
+                ];
+                bgAudio = new Audio();
+                bgAudio.loop = true;
+                bgAudio.volume = 0.5;
+
+                let loaded = false;
+                for (let src of audioSources) {
+                    fetch(src, { method: 'HEAD' })
+                        .then(response => {
+                            if (response.ok && !loaded) {
+                                loaded = true;
+                                bgAudio.src = src;
+                                bgAudio.load();
+                                if (audioEnabled) {
+                                    bgAudio.play().catch(e => console.log('音频自动播放被阻止，等待用户交互'));
+                                }
+                                console.log('✅ 音频加载成功:', src);
+                            }
+                        })
+                        .catch(() => {});
+                }
+                setTimeout(() => {
+                    if (!loaded && !bgAudio.src) {
+                        bgAudio.src = './bgm.mp3';
+                        bgAudio.load();
+                        if (audioEnabled) {
+                            bgAudio.play().catch(e => console.log('音频自动播放被阻止'));
+                        }
+                        console.log('⚠️ 使用默认音频路径: ./bgm.mp3');
+                    }
+                }, 300);
+
+                audioInitialized = true;
+
+                const resumeAudio = () => {
+                    if (bgAudio && audioEnabled && bgAudio.paused) {
+                        bgAudio.play().catch(e => {});
+                    }
+                    document.removeEventListener('click', resumeAudio);
+                    document.removeEventListener('touchstart', resumeAudio);
+                    document.removeEventListener('keydown', resumeAudio);
+                };
+                document.addEventListener('click', resumeAudio);
+                document.addEventListener('touchstart', resumeAudio);
+                document.addEventListener('keydown', resumeAudio);
+
+            } catch(e) {
+                console.warn('音频初始化失败:', e);
+            }
+        }
+
+        function toggleMusic() {
+            if (!bgAudio) {
+                initAudio();
+                setTimeout(() => toggleMusic(), 200);
+                return;
+            }
+            audioEnabled = !audioEnabled;
+            if (audioEnabled) {
+                bgAudio.play().catch(e => console.log('播放失败'));
+                document.getElementById('musicToggleBtn').textContent = '🔊 音乐';
+            } else {
+                bgAudio.pause();
+                document.getElementById('musicToggleBtn').textContent = '🔇 静音';
+            }
+        }
+
+        // ---------- 作者弹窗 ----------
+        const modal = document.getElementById('authorModal');
+        const authorBtn = document.getElementById('authorBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        function openModal() {
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        authorBtn.addEventListener('click', openModal);
+        authorBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            openModal();
+        });
+        closeModalBtn.addEventListener('click', closeModal);
+        closeModalBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            closeModal();
+        });
+        // 点击蒙版关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeModal();
+        });
+
+        // ---------- 画布与游戏 ----------
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const highScoreSpan = document.getElementById('highScoreDisplay');
+
+        const W = 600, H = 250;
+        canvas.width = W; canvas.height = H;
+
+        let gameOver = false;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('dinoHighScore')) || 0;
+        highScoreSpan.textContent = highScore;
+
+        const dino = {
+            x: 40,
+            y: 175,
+            w: 32,
+            h: 40,
+            vy: 0,
+            gravity: 0.55,
+            jumpPower: -10.5,
+            onGround: true,
+            ducking: false,
+            frame: 0,
+            frameTimer: 0
+        };
+
+        const groundY = 200;
+        let obstacles = [];
+        let spawnTimer = 0;
+        const MIN_SPAWN_INTERVAL = 45;
+
+        let clouds = [];
+        for (let i=0; i<4; i++) {
+            clouds.push({
+                x: Math.random() * W,
+                y: 20 + Math.random() * 70,
+                w: 40 + Math.random() * 35,
+                speed: 0.3 + Math.random() * 0.4
+            });
+        }
+
+        const keys = { up: false, down: false, space: false };
+        let touchDuck = false;
+        let touchJump = false;
+
+        function rectCollide(a, b) {
+            return a.x < b.x + b.w && a.x + a.w > b.x &&
+                   a.y < b.y + b.h && a.y + a.h > b.y;
+        }
+
+        function resetGame() {
+            gameOver = false;
+            score = 0;
+            updateScoreDisplay();
+
+            dino.y = groundY - dino.h;
+            dino.vy = 0;
+            dino.onGround = true;
+            dino.ducking = false;
+            dino.frame = 0;
+
+            obstacles = [];
+            spawnTimer = 0;
+
+            clouds.forEach(c => {
+                c.x = Math.random() * W;
+                c.y = 20 + Math.random() * 70;
+                c.w = 40 + Math.random() * 35;
+                c.speed = 0.3 + Math.random() * 0.4;
+            });
+
+            keys.up = false;
+            keys.down = false;
+            keys.space = false;
+            touchDuck = false;
+            touchJump = false;
+        }
+
+        function updateScoreDisplay() {
+            let str = String(Math.floor(score));
+            while (str.length < 4) str = '0' + str;
+            scoreSpan.textContent = str;
+            if (Math.floor(score) > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem('dinoHighScore', String(highScore));
+                highScoreSpan.textContent = highScore;
+            }
+        }
+
+        function spawnObstacle() {
+            const type = Math.random() < 0.7 ? 'cactus' : 'pterodactyl';
+            let obs = { x: W, y: 0, w: 0, h: 0, type: type };
+
+            if (type === 'cactus') {
+                const variant = Math.floor(Math.random() * 3);
+                if (variant === 0) {
+                    obs.w = 16; obs.h = 28; obs.y = groundY - 28;
+                } else if (variant === 1) {
+                    obs.w = 22; obs.h = 36; obs.y = groundY - 36;
+                } else {
+                    obs.w = 30; obs.h = 42; obs.y = groundY - 42;
+                }
+                if (variant === 0 && Math.random() < 0.25) {
+                    const obs2 = { x: W + 22, y: groundY - 28, w: 16, h: 28, type: 'cactus' };
+                    obstacles.push(obs2);
+                }
+            } else {
+                obs.w = 30; obs.h = 22;
+                const flyHigh = Math.random() < 0.5;
+                obs.y = flyHigh ? groundY - 58 : groundY - 32;
+            }
+            obstacles.push(obs);
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            const isDuck = keys.down || touchDuck;
+            const isJump = keys.up || keys.space || touchJump;
+
+            if (isDuck && dino.onGround) {
+                dino.ducking = true;
+                dino.h = 28;
+                dino.y = groundY - dino.h;
+            } else {
+                dino.ducking = false;
+                dino.h = 40;
+                if (dino.onGround) {
+                    dino.y = groundY - dino.h;
+                }
+            }
+
+            if (isJump && dino.onGround && !dino.ducking) {
+                dino.vy = dino.jumpPower;
+                dino.onGround = false;
+                touchJump = false;
+                keys.up = false;
+                keys.space = false;
+            }
+
+            dino.vy += dino.gravity;
+            if (dino.vy > 12) dino.vy = 12;
+            dino.y += dino.vy;
+
+            if (dino.y >= groundY - dino.h) {
+                dino.y = groundY - dino.h;
+                dino.vy = 0;
+                dino.onGround = true;
+            } else {
+                dino.onGround = false;
+            }
+
+            if (dino.onGround && !dino.ducking) {
+                dino.frameTimer++;
+                if (dino.frameTimer > 6) {
+                    dino.frameTimer = 0;
+                    dino.frame = (dino.frame + 1) % 4;
+                }
+            } else {
+                dino.frame = 0;
+            }
+
+            for (let i = obstacles.length-1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= 4.5;
+
+                if (obs.x + obs.w < 0) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+
+                if (!gameOver) {
+                    const dinoBox = {
+                        x: dino.x + 4,
+                        y: dino.y + 2,
+                        w: dino.ducking ? 28 : 24,
+                        h: dino.ducking ? 24 : 36
+                    };
+                    const obsBox = {
+                        x: obs.x + 2,
+                        y: obs.y + 2,
+                        w: obs.w - 4,
+                        h: obs.h - 4
+                    };
+                    if (rectCollide(dinoBox, obsBox)) {
+                        gameOver = true;
+                        if (Math.floor(score) > highScore) {
+                            highScore = Math.floor(score);
+                            localStorage.setItem('dinoHighScore', String(highScore));
+                            highScoreSpan.textContent = highScore;
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if (!gameOver) {
+                spawnTimer--;
+                if (spawnTimer <= 0) {
+                    let baseInterval = Math.max(25, MIN_SPAWN_INTERVAL - Math.floor(score / 300));
+                    const interval = baseInterval + Math.floor(Math.random() * 30);
+                    spawnTimer = interval;
+                    if (Math.random() < 0.6) {
+                        spawnObstacle();
+                    }
+                    if (Math.random() < 0.15 && score > 200) {
+                        spawnObstacle();
+                    }
+                }
+                score += 0.2;
+                updateScoreDisplay();
+            }
+
+            for (let c of clouds) {
+                c.x -= c.speed * 1.2;
+                if (c.x + c.w < 0) {
+                    c.x = W + 20 + Math.random() * 60;
+                    c.y = 20 + Math.random() * 70;
+                    c.w = 40 + Math.random() * 35;
+                    c.speed = 0.3 + Math.random() * 0.4;
+                }
+            }
+
+            if (score > 9999) score = 9999;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = '#f7f7f7';
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.fillStyle = '#dcdcdc';
+            for (let c of clouds) {
+                ctx.beginPath();
+                ctx.ellipse(c.x, c.y, c.w*0.4, 12, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(c.x - c.w*0.25, c.y-4, c.w*0.3, 14, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(c.x + c.w*0.25, c.y-2, c.w*0.28, 10, 0, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#c0c0c0';
+            ctx.fillRect(0, groundY, W, 4);
+            ctx.fillStyle = '#a0a0a0';
+            for (let i=0; i<W; i+=25) {
+                let offset = (i/25) % 2 === 0 ? 0 : 4;
+                ctx.fillRect(i+offset, groundY+2, 3, 6);
+            }
+
+            for (let obs of obstacles) {
+                if (obs.type === 'cactus') {
+                    ctx.fillStyle = '#3c7a3c';
+                    ctx.fillRect(obs.x+2, obs.y+4, 4, obs.h-8);
+                    ctx.fillRect(obs.x+8, obs.y+2, 4, obs.h-6);
+                    ctx.fillRect(obs.x+14, obs.y+6, 4, obs.h-12);
+                    ctx.fillStyle = '#2a5a2a';
+                    ctx.fillRect(obs.x, obs.y+10, 2, 6);
+                    ctx.fillRect(obs.x+obs.w-2, obs.y+14, 2, 6);
+                    ctx.fillStyle = '#5a9a5a';
+                    ctx.fillRect(obs.x+4, obs.y+8, 2, 4);
+                    ctx.fillRect(obs.x+10, obs.y+6, 2, 4);
+                } else {
+                    ctx.fillStyle = '#4a4a4a';
+                    ctx.fillRect(obs.x+4, obs.y+6, 22, 10);
+                    ctx.fillStyle = '#5a5a5a';
+                    ctx.fillRect(obs.x, obs.y+2, 6, 16);
+                    ctx.fillRect(obs.x+24, obs.y+2, 6, 16);
+                    ctx.fillStyle = '#cc3333';
+                    ctx.fillRect(obs.x+20, obs.y+4, 4, 4);
+                    ctx.fillRect(obs.x+24, obs.y+4, 4, 4);
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(obs.x+22, obs.y+6, 2, 2);
+                    ctx.fillRect(obs.x+26, obs.y+6, 2, 2);
+                }
+            }
+
+            const dx = dino.x, dy = dino.y;
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(dx+2, dy+10, 28, 22);
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(dx+20, dy+2, 14, 18);
+            if (dino.ducking) {
+                ctx.fillRect(dx+18, dy+4, 12, 14);
+            }
+            ctx.fillStyle = 'white';
+            ctx.fillRect(dx+24, dy+4, 6, 6);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(dx+28, dy+6, 3, 3);
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(dx+30, dy+12, 4, 2);
+
+            ctx.fillStyle = '#2a2a2a';
+            if (dino.onGround && !dino.ducking) {
+                const legOffset = (dino.frame % 2 === 0) ? 0 : 4;
+                ctx.fillRect(dx+4, dy+32, 6, 8);
+                ctx.fillRect(dx+16, dy+32-legOffset, 6, 8+legOffset);
+                ctx.fillRect(dx+24, dy+32, 6, 8);
+                ctx.fillRect(dx+10, dy+32+legOffset, 6, 8-legOffset);
+            } else {
+                ctx.fillRect(dx+4, dy+32, 6, 8);
+                ctx.fillRect(dx+16, dy+32, 6, 8);
+                if (dino.ducking) {
+                    ctx.fillRect(dx+10, dy+30, 6, 6);
+                }
+            }
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(dx-4, dy+18, 6, 8);
+            ctx.fillRect(dx-8, dy+22, 6, 4);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(dx+26, dy+5, 2, 2);
+
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(200,200,200,0.3)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = '#1f1f1f';
+                ctx.font = 'bold 28px "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💀 GAME OVER', W/2, H/2-10);
+                ctx.font = '14px "Courier New"';
+                ctx.fillStyle = '#444';
+                ctx.fillText('点击「重启」或按空格继续', W/2, H/2+36);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ---------- 键盘事件 ----------
+        function keyDownHandler(e) {
+            const key = e.key;
+            if (key === 'ArrowUp' || key === 'Up') {
+                e.preventDefault();
+                keys.up = true;
+                if (gameOver) resetGame();
+            }
+            if (key === 'ArrowDown' || key === 'Down') {
+                e.preventDefault();
+                keys.down = true;
+            }
+            if (key === ' ' || key === 'Space') {
+                e.preventDefault();
+                keys.space = true;
+                if (gameOver) resetGame();
+            }
+            if (['ArrowUp', 'ArrowDown', ' ', 'Space', 'Up', 'Down'].includes(key)) {
+                e.preventDefault();
+            }
+        }
+
+        function keyUpHandler(e) {
+            const key = e.key;
+            if (key === 'ArrowUp' || key === 'Up') {
+                e.preventDefault();
+                keys.up = false;
+            }
+            if (key === 'ArrowDown' || key === 'Down') {
+                e.preventDefault();
+                keys.down = false;
+            }
+            if (key === ' ' || key === 'Space') {
+                e.preventDefault();
+                keys.space = false;
+            }
+            if (['ArrowUp', 'ArrowDown', ' ', 'Space', 'Up', 'Down'].includes(key)) {
+                e.preventDefault();
+            }
+        }
+
+        window.addEventListener('keydown', keyDownHandler);
+        window.addEventListener('keyup', keyUpHandler);
+
+        // ---------- 触控事件 ----------
+        canvas.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+            if (dino.onGround && !dino.ducking) {
+                dino.vy = dino.jumpPower;
+                dino.onGround = false;
+            }
+        });
+
+        const jumpBtn = document.getElementById('jumpBtn');
+        const duckBtn = document.getElementById('duckBtn');
+
+        jumpBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            if (gameOver) { resetGame(); return; }
+            touchJump = true;
+        });
+        jumpBtn.addEventListener('touchend', function(e) { e.preventDefault(); touchJump = false; });
+        jumpBtn.addEventListener('touchcancel', function(e) { touchJump = false; });
+        jumpBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            if (gameOver) { resetGame(); return; }
+            touchJump = true;
+        });
+        jumpBtn.addEventListener('mouseup', function(e) { e.preventDefault(); touchJump = false; });
+        jumpBtn.addEventListener('mouseleave', function(e) { touchJump = false; });
+
+        duckBtn.addEventListener('touchstart', function(e) { e.preventDefault(); touchDuck = true; });
+        duckBtn.addEventListener('touchend', function(e) { e.preventDefault(); touchDuck = false; });
+        duckBtn.addEventListener('touchcancel', function(e) { touchDuck = false; });
+        duckBtn.addEventListener('mousedown', function(e) { e.preventDefault(); touchDuck = true; });
+        duckBtn.addEventListener('mouseup', function(e) { e.preventDefault(); touchDuck = false; });
+        duckBtn.addEventListener('mouseleave', function(e) { touchDuck = false; });
+
+        // 阻止页面滚动
+        window.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'Space' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        }, false);
+
+        // ---------- 按钮事件 ----------
+        document.getElementById('restartButton').addEventListener('click', function() {
+            resetGame();
+        });
+
+        document.getElementById('musicToggleBtn').addEventListener('click', function() {
+            toggleMusic();
+        });
+
+        // ---------- 启动 ----------
+        initAudio();
+
+        resetGame();
+        gameLoop();
+
+        document.addEventListener('click', function() {
+            if (bgAudio && audioEnabled && bgAudio.paused) {
+                bgAudio.play().catch(e => {});
+            }
+        }, { once: false });
+
+        window.addEventListener('unload', function() {
+            window.removeEventListener('keydown', keyDownHandler);
+            window.removeEventListener('keyup', keyUpHandler);
+            if (bgAudio) {
+                bgAudio.pause();
+                bgAudio = null;
+            }
+        });
+    })();
+</script>
+</body>
+</html>
